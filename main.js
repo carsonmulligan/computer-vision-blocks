@@ -10,7 +10,7 @@ const state = {
 };
 
 // Three.js setup
-let scene, camera, renderer;
+let scene, camera, renderer, voxelGroup;
 const VOXEL_SIZE = 0.3;
 const GRID_SIZE = 20;
 
@@ -51,6 +51,10 @@ function initThreeJS() {
     directionalLight.castShadow = true;
     scene.add(directionalLight);
 
+    // Create group for all voxels (so they can be rotated together)
+    voxelGroup = new THREE.Group();
+    scene.add(voxelGroup);
+
     // Handle window resize
     window.addEventListener('resize', () => {
         camera.aspect = window.innerWidth / window.innerHeight;
@@ -70,8 +74,9 @@ function createVoxel(x, y, z) {
     const edges = new THREE.EdgesGeometry(geometry);
     const lineMaterial = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 });
 
+    // Cyan/blue color like in reference images
     const material = new THREE.MeshStandardMaterial({
-        color: new THREE.Color().setHSL(Math.random(), 0.8, 0.5),
+        color: 0x00CED1, // Cyan color
         roughness: 0.3,
         metalness: 0.1,
         transparent: true,
@@ -86,16 +91,25 @@ function createVoxel(x, y, z) {
     voxel.castShadow = true;
     voxel.receiveShadow = true;
 
-    scene.add(voxel);
+    voxelGroup.add(voxel); // Add to group instead of scene
     state.voxels.set(key, voxel);
 }
 
 function worldPosFromNormalized(nx, ny, nz) {
-    // Convert normalized hand coordinates to world space for AR overlay
-    // nx, ny are 0-1 from MediaPipe, nz is depth (0-1, lower = closer)
-    const worldX = (nx - 0.5) * 6; // Left-right: -3 to 3
-    const worldY = -(ny - 0.5) * 4; // Up-down: -2 to 2, inverted
-    const worldZ = -nz * 3 - 1; // Depth: -1 to -4 (in front of camera at z=5)
+    // Convert normalized hand coordinates to world space
+    // Map to match video AR overlay - blocks appear where hands are
+    // Camera is at (0, 0, 5), FOV 60 degrees
+
+    // Calculate how much of the world space is visible at z=0
+    const distance = 5; // Camera z position
+    const fov = 60 * Math.PI / 180;
+    const viewHeight = 2 * Math.tan(fov / 2) * distance;
+    const viewWidth = viewHeight * (window.innerWidth / window.innerHeight);
+
+    // Map normalized coords (0-1) to world space centered at origin
+    const worldX = (nx - 0.5) * viewWidth;
+    const worldY = -(ny - 0.5) * viewHeight; // Inverted Y
+    const worldZ = 0; // Keep all blocks at same depth for now
 
     // Snap to grid
     const snapX = Math.round(worldX / VOXEL_SIZE) * VOXEL_SIZE;
@@ -267,12 +281,13 @@ function drawHandLandmarks(results) {
 
             // Draw points
             landmarks.forEach((landmark, idx) => {
-                ctx.fillStyle = idx === 4 || idx === 8 ? '#FF0000' : '#00FF00';
+                const isFingerTip = idx === 4 || idx === 8;
+                ctx.fillStyle = isFingerTip ? '#FF0000' : '#00FF00';
                 ctx.beginPath();
                 ctx.arc(
                     landmark.x * canvas.width,
                     landmark.y * canvas.height,
-                    5,
+                    isFingerTip ? 12 : 5, // Bigger dots for thumb and index tips
                     0,
                     2 * Math.PI
                 );
@@ -294,9 +309,14 @@ function handleEditing() {
     // Find the pinching hand
     for (const hand of state.hands) {
         if (isPinching({ landmarks: hand })) {
-            // Use index finger tip position for voxel placement
+            // Use midpoint between thumb tip and index tip for voxel placement
+            const thumbTip = hand[4];
             const indexTip = hand[8];
-            const pos = worldPosFromNormalized(indexTip.x, indexTip.y, indexTip.z);
+            const midX = (thumbTip.x + indexTip.x) / 2;
+            const midY = (thumbTip.y + indexTip.y) / 2;
+            const midZ = (thumbTip.z + indexTip.z) / 2;
+
+            const pos = worldPosFromNormalized(midX, midY, midZ);
             createVoxel(pos.x, pos.y, pos.z);
             editCooldown = 10; // Cooldown to prevent too many voxels
             break;
@@ -322,22 +342,12 @@ function handleOrbiting() {
     const avgY = (pinchingHands[0][8].y + pinchingHands[1][8].y) / 2;
 
     if (state.lastOrbitPos) {
-        const deltaX = (avgX - state.lastOrbitPos.x) * 5;
-        const deltaY = (avgY - state.lastOrbitPos.y) * 5;
+        const deltaX = (avgX - state.lastOrbitPos.x) * 10;
+        const deltaY = (avgY - state.lastOrbitPos.y) * 10;
 
-        // Orbit camera
-        const radius = camera.position.length();
-        const theta = Math.atan2(camera.position.x, camera.position.z);
-        const phi = Math.acos(camera.position.y / radius);
-
-        const newTheta = theta + deltaX;
-        const newPhi = Math.max(0.1, Math.min(Math.PI - 0.1, phi + deltaY));
-
-        camera.position.x = radius * Math.sin(newPhi) * Math.sin(newTheta);
-        camera.position.y = radius * Math.cos(newPhi);
-        camera.position.z = radius * Math.sin(newPhi) * Math.cos(newTheta);
-
-        camera.lookAt(0, 0, 0);
+        // Rotate the voxel group instead of the camera
+        voxelGroup.rotation.y += deltaX; // Left-right rotation
+        voxelGroup.rotation.x += deltaY; // Up-down rotation
     }
 
     state.lastOrbitPos = { x: avgX, y: avgY };
