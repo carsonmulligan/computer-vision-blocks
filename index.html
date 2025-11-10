@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blocks AI - Voxel Editor</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <div id="video-container">
+            <video id="webcam" autoplay playsinline></video>
+            <canvas id="hand-canvas"></canvas>
+        </div>
+        <div id="mode-indicator">
+            <div class="mode-status">
+                <span class="mode-label">Mode:</span>
+                <span id="current-mode" class="mode-text">READY</span>
+            </div>
+            <div class="mode-help">
+                <p><strong>Ready:</strong> No pinches</p>
+                <p><strong>Editing:</strong> One pinch (create voxels)</p>
+                <p><strong>Orbiting:</strong> Two pinches (rotate camera)</p>
+            </div>
+        </div>
+        <canvas id="three-canvas"></canvas>
+    </div>
+    <script type="module" src="main.js"></script>
+</body>
+</html>
