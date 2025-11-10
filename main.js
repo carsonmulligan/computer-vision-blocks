@@ -7,6 +7,11 @@ const state = {
     hands: [],
     voxels: new Map(),
     lastOrbitPos: null,
+    modeStability: {
+        detectedMode: 'ready',
+        frameCount: 0,
+        requiredFrames: 8, // Must detect same mode for 8 frames before switching
+    },
 };
 
 // Three.js setup
@@ -110,7 +115,9 @@ function worldPosFromNormalized(nx, ny, nz) {
     // Flip X because video is mirrored (scaleX(-1))
     const worldX = -(nx - 0.5) * viewWidth; // Flipped X
     const worldY = -(ny - 0.5) * viewHeight; // Inverted Y
-    const worldZ = 0; // Keep all blocks at same depth for now
+    // Use Z depth from MediaPipe (lower values = closer to camera)
+    // Map to range: closer hand = positive Z, further = negative Z
+    const worldZ = (0.5 - nz) * 4; // Range: -2 to 2
 
     // Snap to grid
     const snapX = Math.round(worldX / VOXEL_SIZE) * VOXEL_SIZE;
@@ -196,15 +203,27 @@ function detectMode(hands) {
     return 'ready';
 }
 
-function updateMode(newMode) {
-    if (state.mode !== newMode) {
-        state.mode = newMode;
-        const modeElement = document.getElementById('current-mode');
-        modeElement.textContent = newMode.toUpperCase();
-        modeElement.className = `mode-text ${newMode}`;
+function updateMode(detectedMode) {
+    // Add stickiness to prevent rapid mode oscillation
+    if (detectedMode === state.modeStability.detectedMode) {
+        state.modeStability.frameCount++;
+    } else {
+        // New mode detected, reset counter
+        state.modeStability.detectedMode = detectedMode;
+        state.modeStability.frameCount = 1;
+    }
 
-        if (newMode !== 'orbiting') {
-            state.lastOrbitPos = null;
+    // Only switch mode if we've seen the same mode for enough frames
+    if (state.modeStability.frameCount >= state.modeStability.requiredFrames) {
+        if (state.mode !== detectedMode) {
+            state.mode = detectedMode;
+            const modeElement = document.getElementById('current-mode');
+            modeElement.textContent = detectedMode.toUpperCase();
+            modeElement.className = `mode-text ${detectedMode}`;
+
+            if (detectedMode !== 'orbiting') {
+                state.lastOrbitPos = null;
+            }
         }
     }
 }
