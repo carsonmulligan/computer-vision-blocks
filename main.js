@@ -107,7 +107,8 @@ function worldPosFromNormalized(nx, ny, nz) {
     const viewWidth = viewHeight * (window.innerWidth / window.innerHeight);
 
     // Map normalized coords (0-1) to world space centered at origin
-    const worldX = (nx - 0.5) * viewWidth;
+    // Flip X because video is mirrored (scaleX(-1))
+    const worldX = -(nx - 0.5) * viewWidth; // Flipped X
     const worldY = -(ny - 0.5) * viewHeight; // Inverted Y
     const worldZ = 0; // Keep all blocks at same depth for now
 
