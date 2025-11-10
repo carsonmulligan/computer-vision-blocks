@@ -17,7 +17,7 @@ body {
     position: relative;
 }
 
-#three-canvas {
+#video-container {
     position: absolute;
     top: 0;
     left: 0;
@@ -26,16 +26,14 @@ body {
     z-index: 1;
 }
 
-#video-container {
+#three-canvas {
     position: absolute;
-    bottom: 20px;
-    right: 20px;
-    width: 320px;
-    height: 240px;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-    z-index: 10;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+    pointer-events: none;
 }
 
 #webcam {
@@ -56,32 +54,31 @@ body {
 
 #mode-indicator {
     position: absolute;
-    top: 20px;
-    left: 20px;
-    background: rgba(0, 0, 0, 0.7);
+    top: 10px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(10px);
-    padding: 20px;
-    border-radius: 12px;
+    padding: 8px 12px;
+    border-radius: 6px;
     z-index: 10;
-    min-width: 250px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 .mode-status {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 15px;
-    padding-bottom: 15px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    gap: 6px;
 }
 
 .mode-label {
-    font-size: 14px;
+    font-size: 11px;
     color: #999;
 }
 
 .mode-text {
-    font-size: 24px;
+    font-size: 14px;
     font-weight: bold;
     transition: color 0.3s;
 }
@@ -91,25 +88,13 @@ body {
 }
 
 .mode-text.editing {
-    color: #2196F3;
+    color: #FFD700;
 }
 
 .mode-text.orbiting {
-    color: #FF9800;
+    color: #00CED1;
 }
 
 .mode-help {
-    font-size: 12px;
-    line-height: 1.6;
-}
-
-.mode-help p {
-    margin: 4px 0;
-    color: #ccc;
-}
-
-.mode-help strong {
-    color: white;
-    min-width: 70px;
-    display: inline-block;
+    display: none;
 }

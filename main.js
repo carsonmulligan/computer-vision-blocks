@@ -10,8 +10,8 @@ const state = {
 };
 
 // Three.js setup
-let scene, camera, renderer, gridHelper;
-const VOXEL_SIZE = 0.5;
+let scene, camera, renderer;
+const VOXEL_SIZE = 0.3;
 const GRID_SIZE = 20;
 
 function initThreeJS() {
@@ -19,41 +19,37 @@ function initThreeJS() {
 
     // Scene
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x1a1a1a);
-    scene.fog = new THREE.Fog(0x1a1a1a, 10, 50);
+    // Transparent background for AR overlay effect
 
-    // Camera
+    // Camera - positioned for AR-like view
     camera = new THREE.PerspectiveCamera(
-        75,
+        60,
         window.innerWidth / window.innerHeight,
         0.1,
         1000
     );
-    camera.position.set(5, 5, 10);
+    camera.position.set(0, 0, 5);
     camera.lookAt(0, 0, 0);
 
-    // Renderer
-    renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    // Renderer with transparent background
+    renderer = new THREE.WebGLRenderer({
+        canvas,
+        antialias: true,
+        alpha: true
+    });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.shadowMap.enabled = true;
+    renderer.setClearColor(0x000000, 0); // Transparent
 
     // Lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
     scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(10, 20, 10);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
+    directionalLight.position.set(5, 10, 5);
     directionalLight.castShadow = true;
     scene.add(directionalLight);
-
-    // Grid helper
-    gridHelper = new THREE.GridHelper(GRID_SIZE, GRID_SIZE, 0x444444, 0x222222);
-    scene.add(gridHelper);
-
-    // Axis helper
-    const axesHelper = new THREE.AxesHelper(5);
-    scene.add(axesHelper);
 
     // Handle window resize
     window.addEventListener('resize', () => {
@@ -69,13 +65,23 @@ function createVoxel(x, y, z) {
     if (state.voxels.has(key)) return;
 
     const geometry = new THREE.BoxGeometry(VOXEL_SIZE, VOXEL_SIZE, VOXEL_SIZE);
+
+    // Add edge geometry for better visibility
+    const edges = new THREE.EdgesGeometry(geometry);
+    const lineMaterial = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 });
+
     const material = new THREE.MeshStandardMaterial({
-        color: new THREE.Color().setHSL(Math.random(), 0.7, 0.6),
-        roughness: 0.7,
-        metalness: 0.2,
+        color: new THREE.Color().setHSL(Math.random(), 0.8, 0.5),
+        roughness: 0.3,
+        metalness: 0.1,
+        transparent: true,
+        opacity: 0.9,
     });
 
     const voxel = new THREE.Mesh(geometry, material);
+    const lineSegments = new THREE.LineSegments(edges, lineMaterial);
+    voxel.add(lineSegments);
+
     voxel.position.set(x, y, z);
     voxel.castShadow = true;
     voxel.receiveShadow = true;
@@ -85,11 +91,11 @@ function createVoxel(x, y, z) {
 }
 
 function worldPosFromNormalized(nx, ny, nz) {
-    // Convert normalized hand coordinates to world space
-    // x: -1 to 1, y: -1 to 1, z: 0 to 1
-    const worldX = (nx - 0.5) * 10;
-    const worldY = (1 - ny) * 10 - 5; // Invert Y and center
-    const worldZ = -nz * 5;
+    // Convert normalized hand coordinates to world space for AR overlay
+    // nx, ny are 0-1 from MediaPipe, nz is depth (0-1, lower = closer)
+    const worldX = (nx - 0.5) * 6; // Left-right: -3 to 3
+    const worldY = -(ny - 0.5) * 4; // Up-down: -2 to 2, inverted
+    const worldZ = -nz * 3 - 1; // Depth: -1 to -4 (in front of camera at z=5)
 
     // Snap to grid
     const snapX = Math.round(worldX / VOXEL_SIZE) * VOXEL_SIZE;
